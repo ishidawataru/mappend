@@ -1,0 +1,28 @@
+name: ci
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 10 * * *' # everyday at 10am
+  push:
+    branches:
+      - 'main'
+      - 'releases/v*'
+    tags:
+      - 'v*'
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - 
+        name: Checkout
+        uses: actions/checkout@v3
+      - name: Test
+        uses: dagger/dagger-for-github@v3
+        with:
+          cmds: |
+            project init
+            project update
+            do test
