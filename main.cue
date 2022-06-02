@@ -3,11 +3,9 @@ package main
 import (
 	"list"
 	"dagger.io/dagger"
-	"dagger.io/dagger/core"
 
 	"universe.dagger.io/go"
 	"universe.dagger.io/docker"
-	"universe.dagger.io/git"
 )
 
 dagger.#Plan & {
@@ -21,8 +19,7 @@ dagger.#Plan & {
 			ldflags: "-extldflags \"-f no-PIC -static\""
 			tags:    "osusergo netgo"
 		}
-		build_oras: #ORASBuild
-		test:       docker.#Build & {
+		test: docker.#Build & {
 			steps: list.Concat([
 				[
 					docker.#Pull & {
@@ -41,10 +38,6 @@ dagger.#Plan & {
 						}
 					},
 					docker.#Copy & {
-						contents: build_oras.output
-						dest:     "/usr/bin"
-					},
-					docker.#Copy & {
 						contents: build.output
 						dest:     "/usr/bin"
 					},
@@ -53,10 +46,8 @@ dagger.#Plan & {
 					for arch in ["amd64", "arm64"] {[
 						// create a dummy blob for each arch
 						#Shell & {script: "echo \(arch) > \(arch) && tar cvf \(arch).tar \(arch)"},
-						// create a single-arch image in OCI format
-						#Shell & {script: "advanced copy blob:\(arch) --from files \(arch).tar --to oci:build/blob-\(arch)"},
 						// use mappend to create a multi-arch image
-						#Shell & {script: "mappend build/blob build/blob-\(arch) linux/\(arch)"},
+						#Shell & {script: "mappend build/blob \(arch).tar linux/\(arch)"},
 					]},
 				]),
 				[
@@ -66,42 +57,6 @@ dagger.#Plan & {
 				]])
 		}
 	}
-}
-
-#ORASBuild: {
-	_pull: git.#Pull & {
-		remote: "https://github.com/oras-project/oras-go.git"
-		ref:    "main"
-	}
-	_build: docker.#Build & {
-		steps: [
-			docker.#Pull & {
-				source: "golang:latest"
-			},
-			docker.#Copy & {
-				contents: _pull.output
-				dest:     "/app"
-			},
-			docker.#Run & {
-				command: {
-					name: "go"
-					args: ["mod", "tidy"]
-				}
-				workdir: "/app"
-			},
-			docker.#Run & {
-				command: {
-					name: "go"
-					args: ["build"]
-				}
-					workdir: "/app/examples/advanced"
-				},
-			]}
-	_subdir: core.#Subdir & {
-		input: _build.output.rootfs
-		path:  "/app/examples/advanced/advanced"
-	}
-	output: _subdir.output
 }
 
 #Shell: {
