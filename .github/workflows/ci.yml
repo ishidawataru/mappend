@@ -4,12 +4,6 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 10 * * *' # everyday at 10am
-  push:
-    branches:
-      - 'main'
-      - 'releases/v*'
-    tags:
-      - 'v*'
   pull_request:
 
 jobs:
